@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Mail, Lock, User, Phone, ArrowRight, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Mail, Lock, User, Phone, ArrowRight, ShieldAlert, CheckCircle2, PlayCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export default function AuthModal() {
@@ -10,6 +10,8 @@ export default function AuthModal() {
     loginWithFacebook, 
     sendPhoneOtp, 
     verifyPhoneOtp, 
+    enterDemoSandbox,
+    hasValidFirebaseKeys,
     authError 
   } = useAuth();
 
@@ -79,7 +81,7 @@ export default function AuthModal() {
         <div id="recaptcha-container"></div>
 
         {/* Top Emblem */}
-        <div className="text-center mb-6">
+        <div className="text-center mb-5">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[#FCE8EC] to-[#F0ECFC] text-[#E89CAE] mb-3 shadow-inner">
             <Sparkles className="w-7 h-7" />
           </div>
@@ -90,6 +92,27 @@ export default function AuthModal() {
             Sign in or create your account powered by Firebase
           </p>
         </div>
+
+        {/* Missing Firebase Credentials Banner */}
+        {!hasValidFirebaseKeys && (
+          <div className="mb-5 p-3.5 rounded-2xl bg-[#FAF5E4] border border-[#D4AF37]/40 text-xs text-[#6E5A1C] space-y-2">
+            <div className="font-bold flex items-center gap-1.5 text-[#594814]">
+              <ShieldAlert className="w-4 h-4 text-[#D4AF37]" />
+              <span>Firebase Credentials Required for Live Auth</span>
+            </div>
+            <p className="text-[11px] leading-relaxed">
+              Create a <strong>.env</strong> file in your project root with your Firebase API keys, or click <strong>Preview Demo Sandbox</strong> below to explore the UI immediately!
+            </p>
+            <button
+              type="button"
+              onClick={enterDemoSandbox}
+              className="w-full py-2 px-3 rounded-xl bg-[#D4AF37] text-white font-bold text-xs hover:opacity-95 transition-opacity flex items-center justify-center gap-1.5 shadow-xs"
+            >
+              <PlayCircle className="w-4 h-4" />
+              <span>Enter Interactive Demo Sandbox</span>
+            </button>
+          </div>
+        )}
 
         {/* Auth Method Selector Pills */}
         <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-[#F3EFEA] mb-5">

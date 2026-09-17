@@ -10,8 +10,9 @@ import {
   RecaptchaVerifier,
   signInWithPhoneNumber
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db, googleProvider, facebookProvider } from '../config/firebase';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { auth, db, googleProvider, facebookProvider, hasValidFirebaseKeys } from '../config/firebase';
+import { MOCK_CURRENT_USER } from '../services/mockData';
 
 const AuthContext = createContext();
 
@@ -23,18 +24,16 @@ export const AuthProvider = ({ children }) => {
   const [authError, setAuthError] = useState(null);
   const [phoneConfirmation, setPhoneConfirmation] = useState(null);
 
-  // Helper to generate a unique 4-digit tag (e.g., #8492)
   const generateTag = () => Math.floor(1000 + Math.random() * 9000).toString();
 
-  // Helper to ensure user document exists in Firestore
   const ensureUserProfile = async (user, additionalData = {}) => {
+    if (!hasValidFirebaseKeys) return MOCK_CURRENT_USER;
     try {
       const userDocRef = doc(db, 'users', user.uid);
       const userSnap = await getDoc(userDocRef);
 
       if (userSnap.exists()) {
         const existingData = userSnap.data();
-        // Update online status
         await updateDoc(userDocRef, { online: true });
         const updatedUser = { uid: user.uid, ...existingData, online: true };
         setCurrentUser(updatedUser);
@@ -79,6 +78,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
+    if (!hasValidFirebaseKeys) {
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         await ensureUserProfile(user);
@@ -94,13 +98,21 @@ export const AuthProvider = ({ children }) => {
   // 1. Email Sign Up
   const signupWithEmail = async (email, password, displayName) => {
     setAuthError(null);
+    if (!hasValidFirebaseKeys) {
+      setCurrentUser(MOCK_CURRENT_USER);
+      return MOCK_CURRENT_USER;
+    }
     try {
       const res = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(res.user, { displayName });
       const profile = await ensureUserProfile(res.user, { displayName });
       return profile;
     } catch (err) {
-      setAuthError(err.message);
+      if (err.code === 'auth/api-key-not-valid' || err.message.includes('api-key')) {
+        setAuthError('Firebase API key missing. Create a .env file with your Firebase credentials or click Demo Mode below.');
+      } else {
+        setAuthError(err.message);
+      }
       throw err;
     }
   };
@@ -108,12 +120,20 @@ export const AuthProvider = ({ children }) => {
   // 2. Email Login
   const loginWithEmail = async (email, password) => {
     setAuthError(null);
+    if (!hasValidFirebaseKeys) {
+      setCurrentUser(MOCK_CURRENT_USER);
+      return MOCK_CURRENT_USER;
+    }
     try {
       const res = await signInWithEmailAndPassword(auth, email, password);
       const profile = await ensureUserProfile(res.user);
       return profile;
     } catch (err) {
-      setAuthError(err.message);
+      if (err.code === 'auth/api-key-not-valid' || err.message.includes('api-key')) {
+        setAuthError('Firebase API key missing. Create a .env file with your Firebase credentials or click Demo Mode below.');
+      } else {
+        setAuthError(err.message);
+      }
       throw err;
     }
   };
@@ -121,6 +141,10 @@ export const AuthProvider = ({ children }) => {
   // 3. Google Sign-In
   const loginWithGoogle = async () => {
     setAuthError(null);
+    if (!hasValidFirebaseKeys) {
+      setCurrentUser(MOCK_CURRENT_USER);
+      return MOCK_CURRENT_USER;
+    }
     try {
       const res = await signInWithPopup(auth, googleProvider);
       const profile = await ensureUserProfile(res.user);
@@ -131,8 +155,10 @@ export const AuthProvider = ({ children }) => {
           await signInWithRedirect(auth, googleProvider);
           return;
         } catch (redirectErr) {
-          setAuthError('Pop-up window was blocked by your browser. Please allow popups or use Email/SMS login.');
+          setAuthError('Pop-up window was blocked by your browser.');
         }
+      } else if (err.code === 'auth/api-key-not-valid' || err.message.includes('api-key')) {
+        setAuthError('Firebase API key missing. Create a .env file with your Firebase credentials or click Demo Mode below.');
       } else {
         setAuthError(err.message);
       }
@@ -143,6 +169,10 @@ export const AuthProvider = ({ children }) => {
   // 4. Facebook Sign-In
   const loginWithFacebook = async () => {
     setAuthError(null);
+    if (!hasValidFirebaseKeys) {
+      setCurrentUser(MOCK_CURRENT_USER);
+      return MOCK_CURRENT_USER;
+    }
     try {
       const res = await signInWithPopup(auth, facebookProvider);
       const profile = await ensureUserProfile(res.user);
@@ -153,8 +183,10 @@ export const AuthProvider = ({ children }) => {
           await signInWithRedirect(auth, facebookProvider);
           return;
         } catch (redirectErr) {
-          setAuthError('Pop-up window was blocked by your browser. Please allow popups or use Email/SMS login.');
+          setAuthError('Pop-up window was blocked by your browser.');
         }
+      } else if (err.code === 'auth/api-key-not-valid' || err.message.includes('api-key')) {
+        setAuthError('Firebase API key missing. Create a .env file with your Firebase credentials or click Demo Mode below.');
       } else {
         setAuthError(err.message);
       }
@@ -162,36 +194,46 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // 5. Setup Invisible Recaptcha for Phone Auth
+  // 5. Setup Invisible Recaptcha
   const setupRecaptcha = (containerId = 'recaptcha-container') => {
     if (!window.recaptchaVerifier) {
       window.recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
         size: 'invisible',
-        callback: (response) => {
-          console.log('Recaptcha verified');
-        },
+        callback: () => {},
       });
     }
     return window.recaptchaVerifier;
   };
 
-  // 6. Send Phone OTP SMS
+  // 6. Send Phone OTP
   const sendPhoneOtp = async (phoneNumber) => {
     setAuthError(null);
+    if (!hasValidFirebaseKeys) {
+      setPhoneConfirmation({ confirm: async () => MOCK_CURRENT_USER });
+      return;
+    }
     try {
       const verifier = setupRecaptcha();
       const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, verifier);
       setPhoneConfirmation(confirmationResult);
       return confirmationResult;
     } catch (err) {
-      setAuthError(err.message);
+      if (err.code === 'auth/api-key-not-valid' || err.message.includes('api-key')) {
+        setAuthError('Firebase API key missing. Create a .env file with your Firebase credentials or click Demo Mode below.');
+      } else {
+        setAuthError(err.message);
+      }
       throw err;
     }
   };
 
-  // 7. Verify Phone OTP Code
+  // 7. Verify Phone OTP
   const verifyPhoneOtp = async (otpCode) => {
     setAuthError(null);
+    if (!hasValidFirebaseKeys) {
+      setCurrentUser(MOCK_CURRENT_USER);
+      return MOCK_CURRENT_USER;
+    }
     if (!phoneConfirmation) {
       throw new Error('No phone OTP confirmation request found.');
     }
@@ -206,21 +248,26 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Enter Demo Sandbox Mode
+  const enterDemoSandbox = () => {
+    setCurrentUser(MOCK_CURRENT_USER);
+  };
+
   // Sign Out
   const logout = async () => {
-    if (currentUser?.uid) {
+    if (currentUser?.uid && hasValidFirebaseKeys) {
       try {
         await updateDoc(doc(db, 'users', currentUser.uid), { online: false });
       } catch (e) {}
+      await firebaseSignOut(auth);
     }
-    await firebaseSignOut(auth);
     setCurrentUser(null);
   };
 
   // Update User Profile
   const updateUserProfile = async (updates) => {
     setCurrentUser((prev) => ({ ...prev, ...updates }));
-    if (currentUser?.uid) {
+    if (currentUser?.uid && hasValidFirebaseKeys) {
       try {
         await updateDoc(doc(db, 'users', currentUser.uid), updates);
       } catch (err) {
@@ -234,12 +281,14 @@ export const AuthProvider = ({ children }) => {
     loading,
     authError,
     phoneConfirmation,
+    hasValidFirebaseKeys,
     signupWithEmail,
     loginWithEmail,
     loginWithGoogle,
     loginWithFacebook,
     sendPhoneOtp,
     verifyPhoneOtp,
+    enterDemoSandbox,
     logout,
     updateUserProfile,
   };

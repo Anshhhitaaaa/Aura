@@ -10,13 +10,27 @@ import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 // Retrieve environment variables
+const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
+const authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN;
+const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
+const storageBucket = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET;
+const messagingSenderId = import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID;
+const appId = import.meta.env.VITE_FIREBASE_APP_ID;
+
+export const hasValidFirebaseKeys = Boolean(
+  apiKey && 
+  apiKey !== 'your-api-key-here' &&
+  projectId && 
+  projectId !== 'your-project-id'
+);
+
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'demo-api-key',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'aura-chat-app.firebaseapp.com',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'aura-chat-app',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'aura-chat-app.firebasestorage.app',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '123456789',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:123456789:web:abcdef',
+  apiKey: apiKey || 'dummy-api-key-for-init',
+  authDomain: authDomain || 'dummy-project.firebaseapp.com',
+  projectId: projectId || 'dummy-project',
+  storageBucket: storageBucket || 'dummy-project.firebasestorage.app',
+  messagingSenderId: messagingSenderId || '123456789',
+  appId: appId || '1:123456789:web:dummy',
 };
 
 // Initialize Firebase App
@@ -29,7 +43,7 @@ const storage = getStorage(app);
 const googleProvider = new GoogleAuthProvider();
 const facebookProvider = new FacebookAuthProvider();
 
-export const isDemoMode = false;
+export const isDemoMode = !hasValidFirebaseKeys;
 
 export { 
   app, 
