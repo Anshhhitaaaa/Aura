@@ -1,67 +1,111 @@
-# ✨ Aura — Refined Real-Time Chat & WebRTC Calling Web App
+<div align="center">
+  <img src="public/aura-logo.jpg" alt="Aura Logo" width="120" style="border-radius: 28px; box-shadow: 0 10px 30px rgba(232, 156, 174, 0.3);" />
+  <h1>✨ Aura — Refined Real-Time Chat & WebRTC Calls</h1>
+  <p><strong>Quiet Luxury meets Casual Youth Culture</strong></p>
+  <p>A full-stack, real-time social application featuring frosted glass aesthetics, audio voice notes with waveform visualization, WebRTC peer-to-peer video calling, and multi-method authentication.</p>
 
-**Aura** is a full-stack real-time messaging and voice/video call web application designed with a **"quiet luxury" meets casual youth culture** aesthetic. Featuring soft off-white/cream palettes (`#FAF8F5`), blush pink, lavender, sage green, and soft gold accents, frosted glass panels (`glassmorphism`), audio voice note recording with interactive waveforms, emoji reactions, and WebRTC peer-to-peer calling.
-
----
-
-## 🎨 Design System & Aesthetics
-- **Palette**: Soft cream backgrounds, blush pink (`#E89CAE`), lavender (`#B8A7EA`), sage green (`#98B09A`), soft gold (`#D4AF37`), espresso charcoal (`#2A2624`).
-- **Typography**: Google Fonts — *Space Grotesk* for headings & badges, *Plus Jakarta Sans* for smooth body reading.
-- **Components**: Frosted glass panels (`backdrop-blur-md`), rounded soft-edge cards, subtle shadows, animated visualizer bars, and responsive bottom mobile navigation.
-
----
-
-## 🚀 Quick Start & Local Running
-
-1. **Install Dependencies**:
-   ```bash
-   npm install
-   ```
-
-2. **Start Dev Server**:
-   ```bash
-   npm run dev
-   ```
-
-3. **Production Build**:
-   ```bash
-   npm run build
-   ```
-
-> 💡 **Dual Engine / Demo Mode**: Aura comes with an **Interactive Demo Mode** built-in! If `.env` is missing or set to demo mode, Aura automatically runs with simulated real-time peers, simulated message replies, in-browser voice note recording, and WebRTC loopback video calling out of the box!
+  <p>
+    <a href="#-features">Features</a> •
+    <a href="#-tech-stack">Tech Stack</a> •
+    <a href="#-quick-start">Quick Start</a> •
+    <a href="#-firebase-setup">Firebase Setup</a> •
+    <a href="#-firestore-data-models">Data Models</a>
+  </p>
+</div>
 
 ---
 
-## ⚙️ Firebase Setup Instructions (.env Structure)
+## 🎨 Design Identity & Aesthetic
 
-To connect Aura to your live Firebase backend:
+Aura avoids generic corporate templates in favor of a refined, Gen-Z coded visual design:
+- **Palette**: Soft off-white and warm cream backgrounds (`#FAF8F5`), blush pink (`#E89CAE`), soft lavender (`#B8A7EA`), sage green (`#98B09A`), and soft gold (`#D4AF37`) accents.
+- **Glassmorphism**: Frosted glass panels (`backdrop-blur-md`), soft shadow cards, and ambient micro-glows.
+- **Typography**: Dual Google Fonts pairing — **Space Grotesk** for display headers & badges, **Plus Jakarta Sans** for body readability.
+- **Interactive Sidebar**: Hover-expandable and tap-to-pin navigation drawer (compact icon view by default, expands to full width on hover or pin toggle).
 
-1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com).
-2. Enable **Authentication** (Email/Password & Google Sign-In).
-3. Create a **Firestore Database** in production mode.
-4. Enable **Firebase Storage**.
-5. Copy `.env.example` to `.env` in the project root:
+---
+
+## 🔥 Features
+
+### 🔐 Multi-Method Authentication Suite
+- **Email & Password**: Registration and login with automatic user document initialization in Firestore.
+- **Google Sign-In**: 1-click popup & fallback redirect authentication via `GoogleAuthProvider`.
+- **Facebook Sign-In**: Social login via `FacebookAuthProvider`.
+- **Phone Number SMS OTP**: Verification using Firebase `RecaptchaVerifier` and `signInWithPhoneNumber`.
+
+### 💬 Real-Time Messaging & Media
+- **1:1 Direct DMs & Group Channels**: Powered by real-time Firestore listeners (`onSnapshot`).
+- **Voice Notes**: In-browser audio recording (`MediaRecorder`), live spectrum visualizer bars, and custom interactive waveform audio playback (`WaveformPlayer`).
+- **Image Attachments**: Instant file upload to Firebase Storage with captioning and image viewer.
+- **Emoji Reactions**: Dynamic hover toolbar (`❤️`, `✨`, `🔥`, `🙌`, `☕`, `😍`) with real-time user reaction badges.
+
+### 📞 WebRTC Voice & Video Calling
+- **Peer-to-Peer Calls**: Built with native browser `RTCPeerConnection` and Firestore signaling.
+- **Call Controls**: Toggle microphone mute, camera enable/disable, Picture-in-Picture (PIP) local camera preview, and remote video view.
+- **Audio Synthesizer**: Web Audio API ringtone synthesizer for incoming and outgoing call alerts.
+
+### 👥 Friend System & User Search
+- **Live User Search**: Query registered users in Firestore by email, phone number, username, or friend code (`@username#8492`).
+- **Friend Requests**: Real-time request notifications with 1-click Accept / Decline actions.
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+| :--- | :--- |
+| **Frontend Framework** | React 18 + Vite |
+| **Styling** | Tailwind CSS v4 + `@tailwindcss/vite` |
+| **Icons** | Lucide React |
+| **Backend & BaaS** | Firebase v10+ (Authentication, Firestore, Storage) |
+| **Real-time Signaling & Media** | WebRTC (`RTCPeerConnection`) + Web Audio API |
+
+---
+
+## 🚀 Quick Start
+
+### 1. Clone the repository
+```bash
+git clone https://github.com/Anshhhitaaaa/Aura.git
+cd Aura
+```
+
+### 2. Install dependencies
+```bash
+npm install
+```
+
+### 3. Run Development Server
+```bash
+npm run dev
+```
+Open `http://localhost:5173/` in your browser.
+
+---
+
+## ⚙️ Firebase Setup Instructions
+
+Create a `.env` file in the project root directory and add your Firebase credentials:
 
 ```env
-VITE_FIREBASE_API_KEY="your-api-key-here"
-VITE_FIREBASE_AUTH_DOMAIN="your-project-id.firebaseapp.com"
-VITE_FIREBASE_PROJECT_ID="your-project-id"
-VITE_FIREBASE_STORAGE_BUCKET="your-project-id.firebasestorage.app"
-VITE_FIREBASE_MESSAGING_SENDER_ID="your-messaging-sender-id"
-VITE_FIREBASE_APP_ID="your-app-id"
-
-VITE_FORCE_DEMO_MODE=false
+VITE_FIREBASE_API_KEY="AIzaSy..."
+VITE_FIREBASE_AUTH_DOMAIN="your-app.firebaseapp.com"
+VITE_FIREBASE_PROJECT_ID="your-app"
+VITE_FIREBASE_STORAGE_BUCKET="your-app.firebasestorage.app"
+VITE_FIREBASE_MESSAGING_SENDER_ID="1234567890"
+VITE_FIREBASE_APP_ID="1:1234567890:web:abcdef..."
 ```
 
 ---
 
-## 🗄️ Firestore Data Model Schemas
+## 🗄️ Firestore Data Models
 
 ### `users/{userId}`
 ```json
 {
-  "uid": "usr_123",
+  "uid": "usr_abc123",
   "email": "alex@aura.app",
+  "phoneNumber": "+1234567890",
   "displayName": "Alex Rivers",
   "username": "alex_rivers",
   "tag": "8492",
@@ -76,12 +120,11 @@ VITE_FORCE_DEMO_MODE=false
 ### `chats/{chatId}`
 ```json
 {
-  "id": "chat_456",
+  "id": "chat_xyz789",
   "type": "direct | group",
-  "name": "✨ The Lounge",
-  "avatar": "https://...",
-  "participants": ["usr_123", "usr_789"],
-  "lastMessage": "Hey Alex! Look at this color scheme!",
+  "name": "🎨 Design & Vibe",
+  "participants": ["usr_abc123", "usr_def456"],
+  "lastMessage": "Voice note (0:14)",
   "updatedAt": "Timestamp"
 }
 ```
@@ -90,32 +133,18 @@ VITE_FORCE_DEMO_MODE=false
 ```json
 {
   "id": "msg_001",
-  "senderId": "usr_123",
+  "senderId": "usr_abc123",
   "senderName": "Alex Rivers",
-  "senderAvatar": "https://...",
   "type": "text | image | voice",
-  "content": "Hey there! ✨",
+  "content": "Look at this color scheme! ✨",
   "audioUrl": "https://...",
   "duration": 14,
   "waveform": [30, 60, 90, 45, 80],
-  "caption": "Sunset photo",
-  "timestamp": "10:14 AM",
+  "timestamp": "Timestamp",
   "seen": true,
   "reactions": {
-    "❤️": ["usr_789"]
+    "❤️": ["usr_def456"]
   }
-}
-```
-
-### `calls/{callId}` (WebRTC Signaling)
-```json
-{
-  "callerId": "usr_123",
-  "receiverId": "usr_789",
-  "type": "voice | video",
-  "offer": { "type": "offer", "sdp": "..." },
-  "answer": { "type": "answer", "sdp": "..." },
-  "status": "outgoing | connected | ended"
 }
 ```
 
@@ -123,21 +152,12 @@ VITE_FORCE_DEMO_MODE=false
 
 ## 🔒 Security Rules
 
-Security rules are included in the repository:
-- **`firestore.rules`**: Restricts access so users can only read/write their own profile and access chats/messages/calls they belong to.
-- **`storage.rules`**: Restricts avatar and chat image/audio attachments to authenticated users with 5MB/20MB size caps.
-
-Deploy rules via Firebase CLI:
-```bash
-firebase deploy --only firestore:rules,storage
-```
+Production Security rules are provided in the project:
+- **`firestore.rules`**: Manages document access for users, friends, chats, messages, and calls.
+- **`storage.rules`**: Restricts image uploads (5MB max) and voice notes (20MB max) to authenticated users.
 
 ---
 
-## 🛠️ Built With
-- **React 18** + **Vite**
-- **Tailwind CSS v4** + `@tailwindcss/vite`
-- **Firebase BaaS** (Auth, Firestore, Storage)
-- **WebRTC** (`RTCPeerConnection` for real-time voice & video)
-- **Web Audio API** (synth ringtone & live sound visualizer spectrum)
-- **Lucide React Icons**
+## 📄 License
+
+Distributed under the MIT License. See `LICENSE` for details.
