@@ -10,7 +10,7 @@ import {
   RecaptchaVerifier,
   signInWithPhoneNumber
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db, googleProvider, facebookProvider, hasValidFirebaseKeys } from '../config/firebase';
 import { MOCK_CURRENT_USER } from '../services/mockData';
 
@@ -26,6 +26,33 @@ export const AuthProvider = ({ children }) => {
 
   const generateTag = () => Math.floor(1000 + Math.random() * 9000).toString();
 
+  // Helper to translate raw Firebase error codes to friendly messages
+  const formatAuthError = (err) => {
+    const code = err?.code || '';
+    if (code === 'auth/user-not-found') {
+      return 'No account found with this email/username. Please check your spelling or Sign Up.';
+    }
+    if (code === 'auth/wrong-password') {
+      return 'Incorrect password. Please double-check your password.';
+    }
+    if (code === 'auth/invalid-credential') {
+      return 'Invalid login details. Please check your email/username and password.';
+    }
+    if (code === 'auth/email-already-in-use') {
+      return 'An account with this email already exists. Please Sign In instead.';
+    }
+    if (code === 'auth/invalid-email') {
+      return 'Please enter a valid email address.';
+    }
+    if (code === 'auth/weak-password') {
+      return 'Password must be at least 6 characters long.';
+    }
+    if (code === 'auth/api-key-not-valid' || err.message?.includes('api-key')) {
+      return 'Firebase API key missing. Create a .env file with your Firebase credentials or click Demo Mode below.';
+    }
+    return err.message || 'An error occurred during authentication.';
+  };
+
   const ensureUserProfile = async (user, additionalData = {}) => {
     if (!hasValidFirebaseKeys) return MOCK_CURRENT_USER;
     try {
@@ -39,10 +66,10 @@ export const AuthProvider = ({ children }) => {
         setCurrentUser(updatedUser);
         return updatedUser;
       } else {
-        const baseName = user.displayName || user.email?.split('@')[0] || user.phoneNumber || 'Aura User';
+        const baseName = additionalData.displayName || user.displayName || user.email?.split('@')[0] || user.phoneNumber || 'Aura User';
         const newUserData = {
           uid: user.uid,
-          email: user.email || '',
+          email: (user.email || '').toLowerCase().trim(),
           phoneNumber: user.phoneNumber || '',
           displayName: baseName,
           username: baseName.toLowerCase().replace(/[^a-z0-9]/g, '_'),
@@ -62,7 +89,7 @@ export const AuthProvider = ({ children }) => {
       console.warn('Firestore profile sync note:', err);
       const fallbackUser = {
         uid: user.uid,
-        email: user.email || '',
+        email: (user.email || '').toLowerCase().trim(),
         phoneNumber: user.phoneNumber || '',
         displayName: user.displayName || 'Aura User',
         username: 'aura_user',
@@ -96,44 +123,55 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // 1. Email Sign Up
-  const signupWithEmail = async (email, password, displayName) => {
+  const signupWithEmail = async (emailInput, password, displayName) => {
     setAuthError(null);
+    const cleanEmail = emailInput.trim().toLowerCase();
+
     if (!hasValidFirebaseKeys) {
       setCurrentUser(MOCK_CURRENT_USER);
       return MOCK_CURRENT_USER;
     }
     try {
-      const res = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(res.user, { displayName });
+      const res = await createUserWithEmailAndPassword(auth, cleanEmail, password);
+      if (displayName) {
+        await updateProfile(res.user, { displayName });
+      }
       const profile = await ensureUserProfile(res.user, { displayName });
       return profile;
     } catch (err) {
-      if (err.code === 'auth/api-key-not-valid' || err.message.includes('api-key')) {
-        setAuthError('Firebase API key missing. Create a .env file with your Firebase credentials or click Demo Mode below.');
-      } else {
-        setAuthError(err.message);
-      }
+      setAuthError(formatAuthError(err));
       throw err;
     }
   };
 
-  // 2. Email Login
-  const loginWithEmail = async (email, password) => {
+  // 2. Email or Username Login
+  const loginWithEmail = async (identifierInput, password) => {
     setAuthError(null);
+    const cleanInput = identifierInput.trim();
+
     if (!hasValidFirebaseKeys) {
       setCurrentUser(MOCK_CURRENT_USER);
       return MOCK_CURRENT_USER;
     }
+
     try {
-      const res = await signInWithEmailAndPassword(auth, email, password);
+      let targetEmail = cleanInput.toLowerCase();
+
+      // If user typed a username instead of email, search Firestore to get their email
+      if (!cleanInput.includes('@')) {
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('username', '==', cleanInput.toLowerCase()));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          targetEmail = snap.docs[0].data().email;
+        }
+      }
+
+      const res = await signInWithEmailAndPassword(auth, targetEmail, password);
       const profile = await ensureUserProfile(res.user);
       return profile;
     } catch (err) {
-      if (err.code === 'auth/api-key-not-valid' || err.message.includes('api-key')) {
-        setAuthError('Firebase API key missing. Create a .env file with your Firebase credentials or click Demo Mode below.');
-      } else {
-        setAuthError(err.message);
-      }
+      setAuthError(formatAuthError(err));
       throw err;
     }
   };
@@ -157,10 +195,8 @@ export const AuthProvider = ({ children }) => {
         } catch (redirectErr) {
           setAuthError('Pop-up window was blocked by your browser.');
         }
-      } else if (err.code === 'auth/api-key-not-valid' || err.message.includes('api-key')) {
-        setAuthError('Firebase API key missing. Create a .env file with your Firebase credentials or click Demo Mode below.');
       } else {
-        setAuthError(err.message);
+        setAuthError(formatAuthError(err));
       }
       throw err;
     }
@@ -185,10 +221,8 @@ export const AuthProvider = ({ children }) => {
         } catch (redirectErr) {
           setAuthError('Pop-up window was blocked by your browser.');
         }
-      } else if (err.code === 'auth/api-key-not-valid' || err.message.includes('api-key')) {
-        setAuthError('Firebase API key missing. Create a .env file with your Firebase credentials or click Demo Mode below.');
       } else {
-        setAuthError(err.message);
+        setAuthError(formatAuthError(err));
       }
       throw err;
     }
@@ -214,15 +248,11 @@ export const AuthProvider = ({ children }) => {
     }
     try {
       const verifier = setupRecaptcha();
-      const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, verifier);
+      const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber.trim(), verifier);
       setPhoneConfirmation(confirmationResult);
       return confirmationResult;
     } catch (err) {
-      if (err.code === 'auth/api-key-not-valid' || err.message.includes('api-key')) {
-        setAuthError('Firebase API key missing. Create a .env file with your Firebase credentials or click Demo Mode below.');
-      } else {
-        setAuthError(err.message);
-      }
+      setAuthError(formatAuthError(err));
       throw err;
     }
   };
@@ -238,12 +268,12 @@ export const AuthProvider = ({ children }) => {
       throw new Error('No phone OTP confirmation request found.');
     }
     try {
-      const res = await phoneConfirmation.confirm(otpCode);
+      const res = await phoneConfirmation.confirm(otpCode.trim());
       const profile = await ensureUserProfile(res.user);
       setPhoneConfirmation(null);
       return profile;
     } catch (err) {
-      setAuthError(err.message);
+      setAuthError(formatAuthError(err));
       throw err;
     }
   };
