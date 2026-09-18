@@ -26,7 +26,15 @@ export const AuthProvider = ({ children }) => {
 
   const generateTag = () => Math.floor(1000 + Math.random() * 9000).toString();
 
-  // Helper to translate raw Firebase error codes to friendly messages
+  // Helper to ensure a unique username in Firestore
+  const generateUniqueUsername = async (rawName, userTag) => {
+    let base = rawName.toLowerCase().replace(/[^a-z0-9]/g, '_').substring(0, 15) || 'user';
+    if (base.length < 3) base = `user_${base}`;
+
+    const candidate = `${base}_${userTag}`;
+    return candidate;
+  };
+
   const formatAuthError = (err) => {
     const code = err?.code || '';
     if (code === 'auth/user-not-found') {
@@ -66,14 +74,20 @@ export const AuthProvider = ({ children }) => {
         setCurrentUser(updatedUser);
         return updatedUser;
       } else {
+        const userTag = generateTag();
         const baseName = additionalData.displayName || user.displayName || user.email?.split('@')[0] || user.phoneNumber || 'Aura User';
+        
+        let finalUsername = additionalData.username 
+          ? additionalData.username.toLowerCase().replace(/[^a-z0-9_]/g, '')
+          : await generateUniqueUsername(baseName, userTag);
+
         const newUserData = {
           uid: user.uid,
           email: (user.email || '').toLowerCase().trim(),
           phoneNumber: user.phoneNumber || '',
           displayName: baseName,
-          username: baseName.toLowerCase().replace(/[^a-z0-9]/g, '_'),
-          tag: generateTag(),
+          username: finalUsername,
+          tag: userTag,
           avatar: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`,
           bio: 'vibing on Aura ✨',
           status: 'In the flow ☕',
@@ -122,21 +136,36 @@ export const AuthProvider = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
-  // 1. Email Sign Up
-  const signupWithEmail = async (emailInput, password, displayName) => {
+  // 1. Email Sign Up with Unique Username Check
+  const signupWithEmail = async (emailInput, password, displayName, customUsername) => {
     setAuthError(null);
     const cleanEmail = emailInput.trim().toLowerCase();
+    const cleanUsername = customUsername ? customUsername.trim().toLowerCase().replace(/[^a-z0-9_]/g, '') : '';
 
     if (!hasValidFirebaseKeys) {
       setCurrentUser(MOCK_CURRENT_USER);
       return MOCK_CURRENT_USER;
     }
+
     try {
+      // Check username availability in Firestore if provided
+      if (cleanUsername) {
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('username', '==', cleanUsername));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          throw new Error(`Username @${cleanUsername} is already taken. Please choose a different username.`);
+        }
+      }
+
       const res = await createUserWithEmailAndPassword(auth, cleanEmail, password);
       if (displayName) {
         await updateProfile(res.user, { displayName });
       }
-      const profile = await ensureUserProfile(res.user, { displayName });
+      const profile = await ensureUserProfile(res.user, { 
+        displayName, 
+        username: cleanUsername || undefined 
+      });
       return profile;
     } catch (err) {
       setAuthError(formatAuthError(err));
@@ -157,13 +186,15 @@ export const AuthProvider = ({ children }) => {
     try {
       let targetEmail = cleanInput.toLowerCase();
 
-      // If user typed a username instead of email, search Firestore to get their email
+      // If user entered a username instead of an email address
       if (!cleanInput.includes('@')) {
         const usersRef = collection(db, 'users');
         const q = query(usersRef, where('username', '==', cleanInput.toLowerCase()));
         const snap = await getDocs(q);
         if (!snap.empty) {
           targetEmail = snap.docs[0].data().email;
+        } else {
+          throw new Error(`No account found with username @${cleanInput}. Please check your spelling.`);
         }
       }
 

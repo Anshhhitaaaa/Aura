@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Mail, Lock, User, Phone, ArrowRight, ShieldAlert, CheckCircle2, PlayCircle } from 'lucide-react';
+import { Sparkles, Mail, Lock, User, Phone, ArrowRight, ShieldAlert, CheckCircle2, PlayCircle, AtSign } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export default function AuthModal() {
@@ -22,6 +22,7 @@ export default function AuthModal() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [username, setUsername] = useState('');
 
   // Phone state
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -35,7 +36,7 @@ export default function AuthModal() {
     setLoading(true);
     try {
       if (isSignUp) {
-        await signupWithEmail(email, password, displayName);
+        await signupWithEmail(email, password, displayName, username);
       } else {
         await loginWithEmail(email, password);
       }
@@ -89,7 +90,7 @@ export default function AuthModal() {
             Welcome to Aura
           </h1>
           <p className="text-xs text-[#7A726A] mt-1">
-            Sign in or create your account powered by Firebase
+            Sign in or create your unique account powered by Firebase
           </p>
         </div>
 
@@ -147,30 +148,49 @@ export default function AuthModal() {
         {authMethod === 'email' && (
           <form onSubmit={handleEmailSubmit} className="space-y-4">
             {isSignUp && (
-              <div>
-                <label className="block text-xs font-semibold text-[#4A423D] mb-1.5">Display Name</label>
-                <div className="relative">
-                  <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8C827A]" />
-                  <input
-                    type="text"
-                    required
-                    placeholder="Alex Rivers"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 rounded-2xl glass-input text-xs text-[#2A2624] placeholder-[#8C827A]"
-                  />
+              <>
+                <div>
+                  <label className="block text-xs font-semibold text-[#4A423D] mb-1.5">Display Name</label>
+                  <div className="relative">
+                    <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8C827A]" />
+                    <input
+                      type="text"
+                      required
+                      placeholder="Alex Rivers"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 rounded-2xl glass-input text-xs text-[#2A2624] placeholder-[#8C827A]"
+                    />
+                  </div>
                 </div>
-              </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[#4A423D] mb-1.5">Unique Username</label>
+                  <div className="relative">
+                    <AtSign className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8C827A]" />
+                    <input
+                      type="text"
+                      required
+                      placeholder="alex_rivers"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                      className="w-full pl-10 pr-4 py-3 rounded-2xl glass-input text-xs text-[#2A2624] placeholder-[#8C827A]"
+                    />
+                  </div>
+                </div>
+              </>
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-[#4A423D] mb-1.5">Email Address</label>
+              <label className="block text-xs font-semibold text-[#4A423D] mb-1.5">
+                {isSignUp ? 'Email Address' : 'Email Address or Username'}
+              </label>
               <div className="relative">
                 <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8C827A]" />
                 <input
-                  type="email"
+                  type={isSignUp ? 'email' : 'text'}
                   required
-                  placeholder="alex@aura.app"
+                  placeholder={isSignUp ? 'alex@aura.app' : 'alex@aura.app or alex_rivers'}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 rounded-2xl glass-input text-xs text-[#2A2624] placeholder-[#8C827A]"
@@ -198,7 +218,7 @@ export default function AuthModal() {
               disabled={loading}
               className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-[#E89CAE] to-[#B8A7EA] text-white font-semibold text-xs shadow-md hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
             >
-              <span>{loading ? 'Processing...' : (isSignUp ? 'Sign Up with Email' : 'Sign In with Email')}</span>
+              <span>{loading ? 'Processing...' : (isSignUp ? 'Sign Up with Email' : 'Sign In')}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
